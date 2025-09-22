@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HR Monthly Events</title>
+<style>
+  /* Straumann brand palette */
+  :root{
+    --blue:#195AFA;
+    --gray:#36393A;
+    --sand:#B98C3C;
+    --ink:#0c1222;
+    --card:rgba(54,57,58,.55);
+    --card-brd:rgba(255,255,255,.28);
+    --text:#fff;
+    --muted:rgba(255,255,255,.85);
+    --today:#00A389; /* accent for today marker */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; padding:20px;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--ink); color:var(--text);
+    display:grid; place-items:center;
+  }
+  .wrap{width:min(1000px, 96vw)}
+  .header{
+    display:flex; align-items:center; gap:10px; justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .title{
+    font-weight:900; letter-spacing:.2px;
+    font-size:clamp(20px,3.4vw,30px); margin:0;
+  }
+  .controls{ display:flex; gap:8px; align-items:center; }
+  .btn{
+    cursor:pointer; border:1px solid var(--card-brd); color:#06101B;
+    background:#dfe8ff; font-weight:700; font-size:13px;
+    padding:8px 12px; border-radius:10px;
+  }
+  .btn.alt{ background:#ffe9c6; border-color:#ffd08c; }
+  .legend{ display:flex; gap:10px; align-items:center; color:var(--muted); font-size:12px;}
+  .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .dot.event{ background:var(--blue); }
+  .dot.today{ background:var(--today); }
+
+  .cal{
+    background:var(--card); border:1px solid var(--card-brd);
+    border-radius:16px; overflow:hidden; backdrop-filter:blur(10px) saturate(1.1);
+    -webkit-backdrop-filter:blur(10px) saturate(1.1);
+  }
+  .weekdays, .grid{
+    display:grid; grid-template-columns:repeat(7, 1fr);
+  }
+  .weekdays div{
+    padding:10px 6px; text-align:center; font-size:12px; letter-spacing:.12em; color:var(--muted);
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border-bottom:1px solid rgba(255,255,255,.12);
+  }
+  .cell{
+    min-height:100px; border-right:1px solid rgba(255,255,255,.08);
+    border-bottom:1px solid rgba(255,255,255,.08);
+    padding:8px; display:flex; flex-direction:column; gap:6px;
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  }
+  .cell:nth-child(7n){ border-right:0; }
+  .dateBadge{
+    align-self:flex-start; font-size:12px; font-weight:800; padding:4px 8px; border-radius:8px;
+    background:rgba(255,255,255,.12);
+  }
+  .dateBadge.today{
+    background:var(--today); color:#06101B;
+  }
+  .muted{ opacity:.45 }
+  .event{
+    display:flex; gap:6px; align-items:flex-start;
+    background:rgba(25,90,250,.12); border:1px solid rgba(25,90,250,.35);
+    padding:6px 8px; border-radius:10px; font-size:13px; line-height:1.25;
+  }
+  .event a{
+    color:#cfe; text-decoration:underline; text-underline-offset:2px;
+  }
+  .event .pill{
+    color:#06101B; background:#dfe8ff; border-radius:999px; padding:1px 8px;
+    font-size:10px; font-weight:800; letter-spacing:.06em; white-space:nowrap;
+  }
+  .empty{ color:var(--muted); font-size:12px; }
+  .footer{ margin-top:10px; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  @media (max-width:640px){
+    .cell{ min-height:90px }
+    .event{ font-size:12px }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1 class="title" id="monthTitle">October 2025</h1>
+    <div class="controls">
+      <button class="btn" id="prevBtn">◀ Prev</button>
+      <button class="btn" id="todayBtn">Today</button>
+      <button class="btn" id="nextBtn">Next ▶</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot today"></span> Today</span>
+    <span><span class="dot event"></span> Event</span>
+  </div>
+
+  <div class="cal" id="calendar">
+    <div class="weekdays">
+      <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="footer">
+    <div>Tip: update month by editing <code>DEFAULT_YEAR</code> / <code>DEFAULT_MONTH</code> and the <code>EVENTS</code> list in the code.</div>
+    <div>Colors: Straumann Blue, Gray, Sand accents.</div>
+  </div>
+</div>
+
+<script>
+/* ============== CONFIG YOU EDIT EACH MONTH ============== */
+const DEFAULT_YEAR  = 2025;
+const DEFAULT_MONTH = 10;   // 1 = Jan … 12 = Dec. For October set 10.
+const EVENTS = [
+  // —— October 2025 sample events (replace with your real agenda) ——
+  { date: "2025-10-01", title: "Smile Movement – Final Day Recap (Intranet Post)" },
+  { date: "2025-10-03", title: "Open Enrollment Kickoff Webinar", url: "https://example.com/enroll" },
+  { date: "2025-10-08", title: "Manager Essentials: 1:1 Conversations (Training)", url: "https://example.com/training-1x1" },
+  { date: "2025-10-14", title: "Holiday Schedule Announcement" },
+  { date: "2025-10-17", title: "weEngage Survey Training – Europe", url: "https://example.com/weengage-eu" },
+  { date: "2025-10-22", title: "Benefits Q&A Clinic (Drop-in)", url: "https://example.com/benefits-qa" },
+  { date: "2025-10-29", title: "New Hire Orientation", url: "https://example.com/orientation" }
+];
+
+/* ======= Calendar logic (no edits needed) ======= */
+const $grid  = document.getElementById('grid');
+const $title = document.getElementById('monthTitle');
+const $prev  = document.getElementById('prevBtn');
+const $next  = document.getElementById('nextBtn');
+const $today = document.getElementById('todayBtn');
+
+let state = {
+  year:  DEFAULT_YEAR,
+  month: DEFAULT_MONTH   // 1..12
+};
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+function firstWeekdayOfMonth(year, month){ // returns 1..7 for Mon..Sun
+  const d = new Date(year, month-1, 1);
+  let day = d.getDay(); // 0 Sun .. 6 Sat
+  return day === 0 ? 7 : day; // make Monday=1
+}
+function daysInMonth(year, month){
+  return new Date(year, month, 0).getDate(); // JS trick
+}
+
+function monthName(year, month){
+  return new Date(year, month-1, 1).toLocaleString(undefined, { month:'long', year:'numeric' });
+}
+
+function groupEventsByDate(events){
+  const map = {};
+  for(const ev of events){
+    if(!map[ev.date]) map[ev.date] = [];
+    map[ev.date].push(ev);
+  }
+  return map;
+}
+
+function render(){
+  const {year, month} = state;
+  $title.textContent = monthName(year, month);
+
+  const map = groupEventsByDate(EVENTS);
+
+  $grid.innerHTML = '';
+  const frag = document.createDocumentFragment();
+
+  const first = firstWeekdayOfMonth(year, month); // 1..7 (Mon..Sun)
+  const total = daysInMonth(year, month);
+
+  // how many prev-month placeholders to show before day 1
+  const lead = first - 1;
+
+  // previous and next month helpers
+  const prevYear  = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const nextYear  = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+
+  const prevTotal = daysInMonth(prevYear, prevMonth);
+
+  // lead cells
+  for(let i=lead; i>0; i--){
+    const dayNum = prevTotal - i + 1;
+    const cell = makeCell(prevYear, prevMonth, dayNum, true);
+    frag.appendChild(cell);
+  }
+
+  // current month cells
+  for(let d=1; d<=total; d++){
+    const cell = makeCell(year, month, d, false, map);
+    frag.appendChild(cell);
+  }
+
+  // trail cells to complete 6 rows (optional for consistent height)
+  const cellsNow = lead + total;
+  const trail = (cellsNow % 7 === 0) ? 0 : (7 - (cellsNow % 7));
+  for(let d=1; d<=trail; d++){
+    const cell = makeCell(nextYear, nextMonth, d, true);
+    frag.appendChild(cell);
+  }
+
+  $grid.appendChild(frag);
+}
+
+function makeCell(year, month, day, muted=false, eventMap={}){
+  const cell = document.createElement('div');
+  cell.className = 'cell' + (muted ? ' muted' : '');
+
+  const d = new Date(year, month-1, day);
+  const isToday = (ymd(d) === ymd(new Date()));
+
+  const badge = document.createElement('div');
+  badge.className = 'dateBadge' + (isToday ? ' today' : '');
+  badge.textContent = day;
+  cell.appendChild(badge);
+
+  const key = `${year}-${pad(month)}-${pad(day)}`;
+  const items = eventMap[key] || [];
+
+  if(items.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = '—';
+    cell.appendChild(empty);
+  } else {
+    for(const ev of items){
+      const row = document.createElement('div');
+      row.className = 'event';
+
+      const pill = document.createElement('span');
+      pill.className = 'pill';
+      pill.textContent = 'EVENT';
+      row.appendChild(pill);
+
+      const txt = document.createElement('div');
+      if(ev.url){
+        txt.innerHTML = `<a href="${ev.url}" target="_blank" rel="noopener">${ev.title}</a>`;
+      }else{
+        txt.textContent = ev.title;
+      }
+      row.appendChild(txt);
+
+      cell.appendChild(row);
+    }
+  }
+
+  return cell;
+}
+
+/* Controls */
+$prev.addEventListener('click', ()=>{
+  state.month--;
+  if(state.month < 1){ state.month = 12; state.year--; }
+  render();
+});
+$next.addEventListener('click', ()=>{
+  state.month++;
+  if(state.month > 12){ state.month = 1; state.year++; }
+  render();
+});
+$today.addEventListener('click', ()=>{
+  const now = new Date();
+  state.year = now.getFullYear();
+  state.month = now.getMonth()+1;
+  render();
+});
+
+/* Init */
+render();
+</script>
+</body>
+</html>
